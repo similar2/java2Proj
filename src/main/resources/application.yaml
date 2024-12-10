@@ -1,0 +1,34 @@
+spring:
+  # project basic config
+  application:
+    name: ooad-project
+
+  # database config
+  datasource:
+    url: jdbc:postgresql://localhost:5432/java2
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+
+# mybatis plus config
+mybatis-plus:
+  type-aliases-package: org.example.java2final.pojo
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: assign_id
+      update-strategy: not_null
+
+stack-exchange:
+  base_url: https://api.stackexchange.com/2.3
+  client_secret: 6Ck2SoZVYL1vryBzomTk1w((
+  key: rl_TsLz9ELjgEe4mGH7pEHt7Grwu
+  client_id: 30358
+
+
+
