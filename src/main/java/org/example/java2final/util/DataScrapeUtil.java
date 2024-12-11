@@ -11,7 +11,9 @@ import org.example.java2final.repository.QuestionRepo;
 import org.example.java2final.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,10 +43,10 @@ public class DataScrapeUtil {
         int answerCount = 0;
         int userCount = 0;
 
-        int pageOffset = 10; // Start from the first page
+        int pageOffset = 5; // Start from the first page
         int pageSize = 100; // Number of questions per page
 
-        while (questionCount < 500) {
+        while (questionCount < 1000) {
             // Fetch questions with pagination
             List<Question> questions = scrapeQuestion(pageSize, pageOffset);
 
@@ -58,22 +60,35 @@ public class DataScrapeUtil {
                 // Insert the question into the database
                 if (questionRepo.insert(question)) {
                     questionCount++;
-                    // Fetch and insert answers for the current question
-                    List<Answer> answers = scrapeAnswers(String.valueOf(question.getQuestionId()), 10, pageOffset);
-                    if (answers != null) {
-                        for (Answer answer : answers) {
-                            if (answerRepo.insert(answer)) {
-                                answerCount++;
-                            }
-                        }
-                    }
 
                     // Fetch and insert the question owner's details
                     String ownerUserId = question.getOwnerUserId();
-                    if (ownerUserId != null) { // Check if the user already exists
+                    if (ownerUserId != null) {
                         User owner = scrapeUserDetail(ownerUserId);
                         if (owner != null && userRepo.insertUser(owner)) {
                             userCount++;
+                        }
+                    }
+
+                    // If the question is answered, fetch and insert answers
+                    if (question.getIsAnswered()) {
+                        List<Answer> answers = scrapeAnswers(String.valueOf(question.getQuestionId()), 10, 0);
+                        if (answers != null) {
+                            for (Answer answer : answers) {
+                                // Insert the answer into the database
+                                if (answerRepo.insert(answer)) {
+                                    answerCount++;
+
+                                    // Fetch and insert details of the answer's owner
+                                    String answerOwnerUserId = answer.getOwnerUserId();
+                                    if (answerOwnerUserId != null) {
+                                        User answerOwner = scrapeUserDetail(answerOwnerUserId);
+                                        if (answerOwner != null && userRepo.insertUser(answerOwner)) {
+                                            userCount++;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -90,38 +105,44 @@ public class DataScrapeUtil {
     }
 
     public List<Question> scrapeQuestion(int pageSize, int pageOffset) {
-        // Example StackExchange API call: Get questions tagged with "java" from Stack Overflow
-        String responseMono = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/questions/")
-                        .queryParam("order", "desc")
-                        .queryParam("sort", "creation")
-                        .queryParam("tagged", "java")  // Filter by "java" tag
-                        .queryParam("site", "stackoverflow")
-                        .queryParam("pagesize", Math.min(pageSize, 100))  // Ensure pagesize <= 100
-                        .queryParam("page", Math.max(pageOffset, 1))     // Ensure page >= 1
-                        .queryParam("key", key)                         // Include API key if necessary
-                        .build())
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-
-        JsonNode itemsNode;
         try {
+            // Example StackExchange API call: Get questions tagged with "java" from Stack Overflow
+            String responseMono = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/questions/")
+                            .queryParam("order", "desc")
+                            .queryParam("sort", "activity")
+                            .queryParam("tagged", "java")  // Filter by "java" tag
+                            .queryParam("site", "stackoverflow")
+                            .queryParam("filter", "withbody")
+                            .queryParam("pagesize", Math.min(pageSize, 100))  // Ensure pagesize <= 100
+                            .queryParam("page", Math.max(pageOffset, 1))     // Ensure page >= 1
+                            .queryParam("key", key)                         // Include API key if necessary
+                            .build())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode itemsNode;
+
             // Parse the JSON response and extract the "items" array
             itemsNode = mapper.readTree(responseMono).path("items");
+            // Convert each item in the "items" array to a Question object
+            List<Question> questions = new ArrayList<>();
+            for (JsonNode itemNode : itemsNode) {
+                questions.add(parseStackQuestion(itemNode)); // Apply the parse method
+            }
+
+            System.out.println("Parsed Questions: " + questions);
+            return questions;
+        } catch (WebClientResponseException e) {
+            System.out.println(e.getMessage());
+            return null;
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error processing JSON response", e);
         }
 
-        // Convert each item in the "items" array to a Question object
-        List<Question> questions = new ArrayList<>();
-        for (JsonNode itemNode : itemsNode) {
-            questions.add(parseStackQuestion(itemNode)); // Apply the parse method
-        }
 
-        System.out.println("Parsed Questions: " + questions);
-        return questions;
     }
 
     public List<Answer> scrapeAnswers(String questionId, int pageSize, int pageOffset) {
@@ -160,35 +181,39 @@ public class DataScrapeUtil {
     }
 
     public User scrapeUserDetail(String userId) {
-        // Fetch user details from the StackExchange API
-        String responseMono = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/users/" + userId)
-                        .queryParam("site", "stackoverflow")
-                        .queryParam("key", key)                        // Include API key if necessary
-                        .build())
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-
-        JsonNode userNode;
         try {
+            // Fetch user details from the StackExchange API
+            String responseMono = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/users/" + userId)
+                            .queryParam("site", "stackoverflow")
+                            .queryParam("key", key)                        // Include API key if necessary
+                            .build())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode userNode;
+
             // Parse the response and extract the first user item
             JsonNode itemsNode = mapper.readTree(responseMono).path("items");
             userNode = itemsNode.isArray() && !itemsNode.isEmpty() ? itemsNode.get(0) : null; // Get the first user node
+            if (userNode == null) {
+                throw new RuntimeException("No user found for userId: " + userId);
+            }
+
+            // Parse the user node into a User object
+            User user = parseStackUser(userNode);
+
+            System.out.println("Parsed User: " + user);
+            return user;
+        } catch (WebClientResponseException e) {
+            String response = e.getResponseBodyAsString();
+            System.out.println("Error processing JSON response: " + response);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error processing JSON response", e);
         }
-
-        if (userNode == null) {
-            throw new RuntimeException("No user found for userId: " + userId);
-        }
-
-        // Parse the user node into a User object
-        User user = parseStackUser(userNode);
-
-        System.out.println("Parsed User: " + user);
-        return user;
+        return null;
     }
 
     private Question parseStackQuestion(JsonNode stackQuestion) {
@@ -206,6 +231,7 @@ public class DataScrapeUtil {
         question.setCreationDate(stackQuestion.path("creation_date").asLong(0));
         question.setQuestionId(stackQuestion.path("question_id").asLong(0));
         question.setTitle(stackQuestion.path("title").asText(null));
+        question.setContent(stackQuestion.path("body").asText(null));
         return question;
     }
 

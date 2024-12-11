@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS question
     last_activity_date BIGINT,             -- Last activity date (stored as epoch timestamp)
     creation_date      BIGINT,             -- Creation date (stored as epoch timestamp)
     question_id        BIGINT UNIQUE,      -- Question ID (unique identifier for the question)
-    title              TEXT                -- Title of the question
+    title              TEXT,               -- Title of the question
+    content            VARCHAR
 );
 
 -- Table for storing user information

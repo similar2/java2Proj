@@ -27,4 +27,5 @@ public class Question {
     Long creationDate;
     Long questionId;
     String title;
+    String content;
 }

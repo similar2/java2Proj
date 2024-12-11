@@ -6,4 +6,5 @@ import org.example.java2final.pojo.User;
 
 @Mapper
 public interface UserDAO extends MPJBaseMapper<User> {
+
 }

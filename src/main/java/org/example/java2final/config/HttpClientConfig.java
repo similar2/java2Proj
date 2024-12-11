@@ -31,6 +31,7 @@ public class HttpClientConfig {
                 .baseUrl(stackExchangeBaseUrl) // Replace with StackExchange base URL
                 .defaultHeader("Accept", "application/json") // Set Accept header to JSON
                 .defaultHeader("Authorization", "Bearer " + apiKey) // Set API Key for Authorization (if needed)
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))  // 10 MB
                 .build();
     }
 }

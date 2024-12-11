@@ -23,6 +23,11 @@ mybatis-plus:
     db-config:
       id-type: assign_id
       update-strategy: not_null
+# tomcat config
+server:
+  port: 8080
+  servlet:
+    context-path: /
 
 stack-exchange:
   base_url: https://api.stackexchange.com/2.3
