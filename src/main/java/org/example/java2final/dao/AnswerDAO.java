@@ -54,14 +54,15 @@ public interface AnswerDAO extends MPJBaseMapper<Answer> {
     Integer findSpecificExceptionFrequency(@Param("exceptionName") String exceptionName);
 
     @Select("""
-            SELECT FLOOR((EXTRACT(EPOCH FROM (TO_TIMESTAMP(answer.creation_date) - TO_TIMESTAMP(question.creation_date))) / 60)) AS elapsed_minutes, 
-                   COUNT(*) AS total_answers, 
-                   SUM(CASE WHEN answer.is_accepted THEN 1 ELSE 0 END) AS accepted_answers, 
-                   SUM(CASE WHEN answer.is_accepted THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS acceptance_rate 
-            FROM question 
-            JOIN answer ON question.question_id = answer.question_id 
-            GROUP BY elapsed_minutes 
+            SELECT FLOOR((EXTRACT(EPOCH FROM (TO_TIMESTAMP(answer.creation_date) - TO_TIMESTAMP(question.creation_date))) / 60)) AS elapsed_minutes,
+                   COUNT(*) AS total_answers,
+                   SUM(CASE WHEN answer.is_accepted THEN 1 ELSE 0 END) AS accepted_answers,
+                   SUM(CASE WHEN answer.is_accepted THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS acceptance_rate
+            FROM question
+            JOIN answer ON question.question_id = answer.question_id
+            GROUP BY elapsed_minutes
             ORDER BY elapsed_minutes
+
             """)
     List<AnswerTimeDistributionVO> getAnswerTimeDistributions();
 
