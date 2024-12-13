@@ -14,9 +14,10 @@ public class ExceptionRepo {
         this.answerDAO = answerDAO;
     }
 
-    public List<Map<String, Integer>> getExceptions(Integer size) {
-        return answerDAO.findExceptionFrequencies(size);
+    public List<Map<String, Object>> getExceptionsByType(Integer size, String type) {
+        return answerDAO.findExceptionFrequenciesByType(size, type);
     }
+
 
     public Map<String, Integer> getException(String exceptionName) {
         Integer frequency = answerDAO.findSpecificExceptionFrequency(exceptionName);

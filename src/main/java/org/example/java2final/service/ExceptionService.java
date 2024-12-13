@@ -17,23 +17,29 @@ import java.util.Map;
 public class ExceptionService {
     private final ExceptionRepo exceptionRepo;
 
-    public Result<List<Map<String, Integer>>> getTopNExceptions(int size) {
+    public Result<List<Map<String, Object>>> getTopNExceptions(int size, String type) {
         // Validate input
         if (size <= 0) {
             return Result.error("Invalid size: must be greater than 0");
         }
 
-        // Fetch data from repository
-        List<Map<String, Integer>> exceptions = exceptionRepo.getExceptions(size);
+        // Validate type input
+        if (!"exception".equals(type) && !"error".equals(type)) {
+            return Result.error("Invalid type: must be 'exception' or 'error'");
+        }
+
+        // Fetch data from repository based on type
+        List<Map<String, Object>> exceptions = exceptionRepo.getExceptionsByType(size, type);
 
         // Validate output
         if (exceptions == null || exceptions.isEmpty()) {
-            return Result.error("No exceptions found for the requested size");
+            return Result.error("No exceptions found for the requested type");
         }
 
         // Return success response
         return Result.success(exceptions);
     }
+
 
     public Result<Map<String, Integer>> getExceptionFrequency(String exceptionName) {
         // Validate input: Check if exceptionName is not null or empty

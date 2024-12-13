@@ -16,23 +16,34 @@ import java.util.Map;
 @Mapper
 public interface AnswerDAO extends MPJBaseMapper<Answer> {
     @Select("""
-                SELECT exception_name,
-                       COUNT(*) AS frequency
-                FROM (
-                         -- Extract exceptions from the question table
-                         SELECT unnest(regexp_matches(content, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
-                         FROM question
-                         UNION ALL
-                         -- Extract exceptions from the answer table
-                         SELECT unnest(regexp_matches(body, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
-                         FROM answer
-                     ) AS exceptions
-                WHERE exception_name NOT IN ('Exception', 'Error') -- Exclude raw terms
-                GROUP BY exception_name
-                ORDER BY frequency DESC
-                LIMIT #{exceptionsSize}
-            """)
-    List<Map<String, Integer>> findExceptionFrequencies(@Param("exceptionsSize") Integer size);
+    SELECT exception_name AS name,
+           COUNT(*) AS frequency,
+           CASE
+               WHEN exception_name LIKE '%Exception%' OR exception_name LIKE '%Throwable%' THEN 'exception'
+               WHEN exception_name LIKE '%Error%' OR exception_name LIKE '%Failure%' THEN 'error'
+               ELSE 'unknown'
+           END AS type
+    FROM (
+        -- Extract exceptions from the question table
+        SELECT unnest(regexp_matches(content, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
+        FROM question
+        UNION ALL
+        -- Extract exceptions from the answer table
+        SELECT unnest(regexp_matches(body, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
+        FROM answer
+    ) AS exceptions
+    WHERE exception_name NOT IN ('Exception', 'Error')  -- Exclude raw terms
+    AND (
+        ('exception' = #{type} AND exception_name LIKE '%Exception%') OR
+        ('error' = #{type} AND exception_name LIKE '%Error%')
+    )
+    GROUP BY exception_name
+    ORDER BY frequency DESC
+    LIMIT #{size}
+""")
+    List<Map<String, Object>> findExceptionFrequenciesByType(@Param("size") Integer size, @Param("type") String type);
+
+
 
     @Select("""
                 SELECT

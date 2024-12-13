@@ -20,12 +20,13 @@ import java.util.Map;
 public class ExceptionController {
     private final ExceptionService exceptionService;
 
-    @Operation(summary = "获取top N 常见异常")
+    @Operation(summary = "获取top N 常见异常/错误")
     @GetMapping("/top")
-    public Result<List<Map<String, Integer>>> getTopN(
-            @RequestParam int size
+    public Result<List<Map<String, Object>>> getTopN(
+            @RequestParam int size,
+            @RequestParam String type
     ) {
-        return exceptionService.getTopNExceptions(size);
+        return exceptionService.getTopNExceptions(size,type);
     }
 
     @Operation(summary = "获取异常出现次数")

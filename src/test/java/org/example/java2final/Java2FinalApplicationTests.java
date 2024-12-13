@@ -30,7 +30,7 @@ class Java2FinalApplicationTests {
 
     @Test
     void getExceptions() {
-        Result<List<Map<String, Integer>>> exceptions = exceptionService.getTopNExceptions(0);
+        Result<List<Map<String, Object>>> exceptions = exceptionService.getTopNExceptions(0, "exception");
         System.out.println(exceptions.toString());
         Result<Map<String, Integer>> exception = exceptionService.getExceptionFrequency("invalidone");
         System.out.println(exception.toString());
