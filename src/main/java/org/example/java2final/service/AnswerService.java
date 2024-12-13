@@ -24,13 +24,13 @@ public class AnswerService {
         return Result.success(answerTimeDistributionVOList);
     }
 
-    public Result<List<ReputationScoreVO>> getReputationScore() {
-        List<ReputationScoreVO> reputationScoreVOList = answerRepo.getReputationScore();
+    public Result<List<ReputationScoreVO>> getReputationScore(int pageSize, int currentPage) {
+        List<ReputationScoreVO> reputationScoreVOList = answerRepo.getReputationScore(pageSize, currentPage);
         return Result.success(reputationScoreVOList);
     }
 
-    public Result<List<CustomScoreVO>> getCustomScore() {
-        List<CustomScoreVO> customScoreVOList = answerRepo.getCustomScore();
+    public Result<List<CustomScoreVO>> getCustomScore(int pageSize, int currentPage) {
+        List<CustomScoreVO> customScoreVOList = answerRepo.getCustomScore(pageSize, currentPage);
         return Result.success(customScoreVOList);
     }
 }

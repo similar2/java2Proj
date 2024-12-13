@@ -22,12 +22,14 @@ public class AnswerRepo {
         return answerDAO.getAnswerTimeDistributions();
     }
 
-    public List<ReputationScoreVO> getReputationScore() {
-        return answerDAO.getReputationScore();
+    public List<ReputationScoreVO> getReputationScore(int pageSize, int currentPage) {
+        int offset = (currentPage - 1) * pageSize;
+        return answerDAO.getReputationScore(pageSize, offset);
     }
 
-    public List<CustomScoreVO> getCustomScore() {
-        return answerDAO.getCustomScore();
+    public List<CustomScoreVO> getCustomScore(int pageSize, int currentPage) {
+        int offset = (currentPage - 1) * pageSize;
+        return answerDAO.getCustomScore(pageSize, offset);
     }
 
     private boolean assertNoDuplicate(Answer answer) {

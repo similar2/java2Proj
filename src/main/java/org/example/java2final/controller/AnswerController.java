@@ -10,6 +10,7 @@ import org.example.java2final.vo.CustomScoreVO;
 import org.example.java2final.vo.ReputationScoreVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -29,14 +30,18 @@ public class AnswerController {
 
     @Operation(summary = "答案得分与用户声誉关系")
     @GetMapping("/reputation")
-    public Result<List<ReputationScoreVO>> getReputationScore() {
-        return answerService.getReputationScore();
+    public Result<List<ReputationScoreVO>> getReputationScore(
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "1") int currentPage) {
+        return answerService.getReputationScore(pageSize, currentPage);
     }
 
     @Operation(summary = "问题阅读量和答案长度与用户创建时长的关系")
     @GetMapping("/custom")
-    public Result<List<CustomScoreVO>> getCustomScore() {
-        return answerService.getCustomScore();
+    public Result<List<CustomScoreVO>> getCustomScore(
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "1") int currentPage) {
+        return answerService.getCustomScore(pageSize, currentPage);
     }
 
 }
