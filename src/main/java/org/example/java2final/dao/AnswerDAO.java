@@ -19,7 +19,8 @@ public interface AnswerDAO extends MPJBaseMapper<Answer> {
     SELECT exception_name AS name,
            COUNT(*) AS frequency,
            CASE
-               WHEN exception_name LIKE '%Exception%' OR exception_name LIKE '%Throwable%' THEN 'exception'
+               -- Match 'Exception' or 'Throwable' but exclude 'Error' types more specifically
+               WHEN exception_name LIKE '%Exception%' AND exception_name NOT LIKE '%Error%' THEN 'exception'
                WHEN exception_name LIKE '%Error%' OR exception_name LIKE '%Failure%' THEN 'error'
                ELSE 'unknown'
            END AS type
@@ -34,7 +35,7 @@ public interface AnswerDAO extends MPJBaseMapper<Answer> {
     ) AS exceptions
     WHERE exception_name NOT IN ('Exception', 'Error')  -- Exclude raw terms
     AND (
-        ('exception' = #{type} AND exception_name LIKE '%Exception%') OR
+        ('exception' = #{type} AND exception_name LIKE '%Exception%' AND exception_name NOT LIKE '%Error%') OR
         ('error' = #{type} AND exception_name LIKE '%Error%')
     )
     GROUP BY exception_name
