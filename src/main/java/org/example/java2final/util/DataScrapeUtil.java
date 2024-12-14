@@ -34,7 +34,7 @@ public class DataScrapeUtil {
 
 
     @Retryable(value = {WebClientResponseException.class},
-            maxAttempts = 10, backoff = @Backoff(delay = 1000L))
+            maxAttempts = 100, backoff = @Backoff(delay = 10000L))
     public List<Question> scrapeQuestion(int pageSize, int pageOffset) {
         try {
             // Example StackExchange API call: Get questions tagged with "java" from Stack Overflow
@@ -72,7 +72,7 @@ public class DataScrapeUtil {
     }
 
     @Retryable(value = {WebClientResponseException.class},
-            maxAttempts = 10, backoff = @Backoff(delay = 1000L))
+            maxAttempts = 100, backoff = @Backoff(delay = 10000L))
     public List<Answer> scrapeAnswers(String questionId, int pageSize, int pageOffset) {
         // Fetch answers from the StackExchange API
         String responseMono = webClient.get()
@@ -109,17 +109,17 @@ public class DataScrapeUtil {
     }
 
     @Retryable(value = {WebClientResponseException.class},
-            maxAttempts = 10, backoff = @Backoff(delay = 1000L))
+            maxAttempts = 100, backoff = @Backoff(delay = 10000L))
     public User scrapeUserDetail(String userId) {
         try {
             // Fetch user details from the StackExchange API
             String responseMono = webClient.get()
-                    .uri(String.format("/users/" + userId + "?site=stackoverflow"))
-//            uriBuilder -> uriBuilder
-//                    .path("/users/" + userId)
-//                    .queryParam("site", "stackoverflow")
-//                    .queryParam("key", key)                        // Include API key if necessary
-//                    .build()
+                    .uri(
+                            uriBuilder -> uriBuilder
+                                    .path("/users/" + userId)
+                                    .queryParam("site", "stackoverflow")
+                                    .queryParam("key", key)                        // Include API key if necessary
+                                    .build())
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -142,7 +142,7 @@ public class DataScrapeUtil {
     }
 
     @Retryable(value = {WebClientResponseException.class},
-            maxAttempts = 10, backoff = @Backoff(delay = 1000L))
+            maxAttempts = 100, backoff = @Backoff(delay = 10000L))
     public List<Activity> scrapeActivity(Long questionId, int pageSize, int pageOffset) {
         try {
             String fullUrl = "questions/" + questionId + "/timeline" +
