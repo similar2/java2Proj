@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS question,"user",answer;
+DROP TABLE IF EXISTS question,"user",answer,activity;
 
 -- Table for storing questions
 CREATE TABLE IF NOT EXISTS question
@@ -48,4 +48,12 @@ CREATE TABLE IF NOT EXISTS answer
     answer_id          BIGINT UNIQUE,      -- Answer ID (unique identifier for the answer)
     question_id        BIGINT,             -- ID of the question this answer belongs to
     body               TEXT                -- Body/content of the answer
+);
+CREATE TABLE IF NOT EXISTS activity
+(
+    id              SERIAL PRIMARY KEY,
+    question_id     BIGINT,                -- Assumes question IDs are stored as BIGINT
+    user_id         BIGINT,                -- Assumes user IDs are stored as BIGINT
+    activity_type   VARCHAR(255) NOT NULL, -- Check constraint for valid activity types
+    user_reputation BIGINT
 );

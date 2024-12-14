@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.java2final.pojo.Answer;
 import org.example.java2final.pojo.Question;
 import org.example.java2final.pojo.User;
+import org.example.java2final.pojo.Activity;
+import org.example.java2final.repository.ActivityRepo;
 import org.example.java2final.repository.AnswerRepo;
 import org.example.java2final.repository.QuestionRepo;
 import org.example.java2final.repository.UserRepo;
@@ -16,6 +18,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class DataScrapeUtil {
@@ -27,14 +30,16 @@ public class DataScrapeUtil {
     private final QuestionRepo questionRepo;
     private final UserRepo userRepo;
     private final AnswerRepo answerRepo;
+    private final ActivityRepo activityRepo;
 
 
-    public DataScrapeUtil(WebClient webClient, ObjectMapper mapper, QuestionRepo questionRepo, UserRepo userRepo, AnswerRepo answerRepo) {
+    public DataScrapeUtil(WebClient webClient, ObjectMapper mapper, QuestionRepo questionRepo, UserRepo userRepo, AnswerRepo answerRepo, ActivityRepo activityRepo) {
         this.webClient = webClient;
         this.mapper = mapper;
         this.questionRepo = questionRepo;
         this.userRepo = userRepo;
         this.answerRepo = answerRepo;
+        this.activityRepo = activityRepo;
     }
 
     public void dataScrape() {
@@ -42,10 +47,17 @@ public class DataScrapeUtil {
         int answerCount = 0;
         int userCount = 0;
 
-        int pageOffset = 5; // Start from the first page
+        int pageOffset = 0; // Start from the first page
         int pageSize = 100; // Number of questions per page
 
         while (questionCount < 1000) {
+            synchronized (this) {
+                try {
+                    wait(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
             // Fetch questions with pagination
             List<Question> questions = scrapeQuestion(pageSize, pageOffset);
 
@@ -71,7 +83,7 @@ public class DataScrapeUtil {
 
                     // If the question is answered, fetch and insert answers
                     if (question.getIsAnswered()) {
-                        List<Answer> answers = scrapeAnswers(String.valueOf(question.getQuestionId()), 10, 0);
+                        List<Answer> answers = scrapeAnswers(String.valueOf(question.getQuestionId()), 5, 0);
                         if (answers != null) {
                             for (Answer answer : answers) {
                                 // Insert the answer into the database
@@ -86,6 +98,19 @@ public class DataScrapeUtil {
                                             userCount++;
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                    List<Activity> activities;
+                    activities = this.scrapeActivity(question.getQuestionId(), 30, 0);
+                    if (activities != null) {
+                        for (Activity activity : activities) {
+                            if (activityRepo.addActivity(activity)) {
+                                String activityUserId = activity.getUserId().toString();
+                                User answerOwner = scrapeUserDetail(activityUserId);
+                                if (answerOwner != null && userRepo.insertUser(answerOwner)) {
+                                    userCount++;
                                 }
                             }
                         }
@@ -108,7 +133,7 @@ public class DataScrapeUtil {
             // Example StackExchange API call: Get questions tagged with "java" from Stack Overflow
             String responseMono = webClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/questions/")
+                            .path("/questions")
                             .queryParam("order", "desc")
                             .queryParam("sort", "activity")
                             .queryParam("tagged", "java")  // Filter by "java" tag
@@ -134,14 +159,13 @@ public class DataScrapeUtil {
 
             System.out.println("Parsed Questions: " + questions);
             return questions;
-        } catch (WebClientResponseException e) {
-            System.out.println(e.getMessage());
+        } catch (WebClientResponseException.Forbidden e) {
+            String responseBody = e.getResponseBodyAsString();
+            System.out.println(responseBody);
             return null;
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error processing JSON response", e);
         }
-
-
     }
 
     public List<Answer> scrapeAnswers(String questionId, int pageSize, int pageOffset) {
@@ -213,6 +237,51 @@ public class DataScrapeUtil {
             throw new RuntimeException("Error processing JSON response", e);
         }
         return null;
+    }
+
+    public List<Activity> scrapeActivity(Long questionId, int pageSize, int pageOffset) {
+        try {
+            String fullUrl = "questions/" + questionId + "/timeline" +
+                    "?site=stackoverflow" +
+                    "&pagesize=" + Math.min(pageSize, 100) +
+                    "&page=" + Math.max(pageOffset, 1) +
+                    "&key=" + key;  // Include the API key if necessary
+
+            // Fetch activities for a specific question
+            String responseMono = webClient.get()
+                    .uri(fullUrl)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode itemsNode;
+
+            // Parse the JSON response and extract the "items" array
+            itemsNode = mapper.readTree(responseMono).path("items");
+            // Convert each item in the "items" array to an Activity object
+            List<Activity> activities = new ArrayList<>();
+            for (JsonNode itemNode : itemsNode) {
+                Activity activity = parseStackActivity(itemNode);
+                if (!Objects.equals(activity.getActivityType(), "vote_aggregate") && itemNode.path("owner").path("user_type").asText().equals("registered")) {
+                    activities.add(activity); // Apply the parse method
+                }
+            }
+            return activities;
+        } catch (WebClientResponseException e) {
+            System.out.println("WebClient response error: " + e.getMessage());
+            return null;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error processing JSON response", e);
+        }
+    }
+
+    private Activity parseStackActivity(JsonNode itemNode) {
+        Activity activity = new Activity();
+        activity.setQuestionId(itemNode.path("question_id").asLong());
+        activity.setUserId(itemNode.path("owner").path("user_id").asLong());
+        activity.setActivityType(itemNode.path("timeline_type").asText());
+        activity.setUserReputation(itemNode.path("owner").path("reputation").asLong());
+        return activity;
     }
 
     private Question parseStackQuestion(JsonNode stackQuestion) {

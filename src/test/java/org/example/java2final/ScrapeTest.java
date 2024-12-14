@@ -14,8 +14,6 @@ public class ScrapeTest {
     @Test
     public void test() {
         dataScrapeUtil.dataScrape();
-//        dataScrapeUtil.scrapeQuestion(5, 0); // Call the scrapeQuestion method
-//        dataScrapeUtil.scrapeUserDetail("971355");
-//        dataScrapeUtil.scrapeAnswers("79265831", 5, 0);
+
     }
 }
