@@ -18,8 +18,9 @@ public class AnswerRepo {
         this.answerDAO = answerDAO;
     }
 
-    public List<AnswerTimeDistributionVO> getAnswerTimeDistribution() {
-        return answerDAO.getAnswerTimeDistributions();
+    public List<AnswerTimeDistributionVO> getAnswerTimeDistribution(int pageSize, int currentPage) {
+        int offset = (currentPage - 1) * pageSize;
+        return answerDAO.getAnswerTimeDistributions(pageSize, offset);
     }
 
     public List<ReputationScoreVO> getReputationScore(int pageSize, int currentPage) {

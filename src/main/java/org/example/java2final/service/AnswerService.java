@@ -19,8 +19,8 @@ import java.util.List;
 public class AnswerService {
     private final AnswerRepo answerRepo;
 
-    public Result<List<AnswerTimeDistributionVO>> getAnswerTimeDistribution() {
-        List<AnswerTimeDistributionVO> answerTimeDistributionVOList = answerRepo.getAnswerTimeDistribution();
+    public Result<List<AnswerTimeDistributionVO>> getAnswerTimeDistribution(int pageSize, int currentPage) {
+        List<AnswerTimeDistributionVO> answerTimeDistributionVOList = answerRepo.getAnswerTimeDistribution(pageSize, currentPage);
         return Result.success(answerTimeDistributionVOList);
     }
 
