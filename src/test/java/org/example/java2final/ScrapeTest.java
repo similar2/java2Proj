@@ -39,7 +39,7 @@ public class ScrapeTest {
         int answerCount = 0;
         int userCount = 0;
 
-        int pageOffset = 0; // Start from the first page
+        int pageOffset = 60; // Start from the first page
         int pageSize = 10; // Number of questions per page
 
         while (questionCount < 1000) {
@@ -67,7 +67,7 @@ public class ScrapeTest {
 
                     // If the question is answered, fetch and insert answers
                     if (question.getIsAnswered()) {
-                        List<Answer> answers = dataScrapeUtil.scrapeAnswers(String.valueOf(question.getQuestionId()), 5, 0);
+                        List<Answer> answers = dataScrapeUtil.scrapeAnswers(String.valueOf(question.getQuestionId()), 10, 0);
                         if (answers != null) {
                             for (Answer answer : answers) {
                                 // Insert the answer into the database
