@@ -2,23 +2,54 @@
   <div class="engagement-analysis">
     <h1>User Engagement Analysis</h1>
 
-    <!-- 输入框和按钮 -->
-    <div class="input-container">
-      <label for="topN">Enter Top N Topics: </label>
-      <input type="number" id="topN" v-model.number="topN" min="1" placeholder="Enter a number" />
-      <button @click="calculateEngagement">Submit</button>
-
-      <small class="info-text">(For high-reputation users with reputation >= 10000)</small>
+    <!-- 切换按钮和输入框 -->
+    <div class="switch-container">
+      <button @click="toggleView">
+        {{ isTagRanking ? 'Switch to Engagement Ranking' : 'Switch to Tag Ranking' }}
+      </button>
     </div>
 
-    <!-- 展示结果 -->
-    <ul v-if="topTopics.length > 0">
+    <!-- 输入框和按钮 (对于标签高质量排行) -->
+    <div v-if="isTagRanking" class="input-container">
+      <label for="minReputation">Enter Min Reputation: </label>
+      <input type="number" id="minReputation" v-model.number="minReputation" min="1" placeholder="Min Reputation" />
+
+      <label for="limit">Enter Top N Tags: </label>
+      <input type="number" id="limit" v-model.number="limit" min="1" placeholder="Top N Tags" />
+
+      <button @click="fetchTopTags">Submit</button>
+    </div>
+
+    <!-- 展示结果 (Engagement Ranking) -->
+    <ul v-if="!isTagRanking && topTopics.length > 0">
       <li v-for="topic in topTopics" :key="topic.id" class="topic-item">
         Topic ID: {{ topic.id }} - Engagement Count: {{ topic.engagementCount }}
         <button class="detail-btn" @click="viewDetails(topic.id)">查看详情</button>
       </li>
     </ul>
-    <p v-else class="no-data-msg">No data available for the given N.</p>
+
+    <!-- 展示结果 (Tag Ranking) -->
+    <div v-if="isTagRanking && tagRanking.length > 0" class="tag-ranking-container">
+      <table class="tag-ranking-table">
+        <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tag</th>
+          <th>Count</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="(tag, index) in tagRanking" :key="index">
+          <td>{{ index + 1 }}</td>
+          <td>{{ tag.tag }}</td>
+          <td>{{ tag.count }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+
+    <p v-else class="no-data-msg">No data available for the given parameters.</p>
 
     <!-- 弹窗显示问题详情 -->
     <div v-if="showDetail" class="modal-overlay">
@@ -32,6 +63,7 @@
   </div>
 </template>
 
+
 <script>
 import axios from 'axios';
 
@@ -39,16 +71,19 @@ export default {
   data() {
     return {
       activityData: [],
-      topTopics: [],
-      reputationThreshold: 50000, // Filter for high-reputation users
-      topN: 5, // Default value for N
+      topTopics: [], // 用于存储用户参与度排行
+      tagRanking: [], // 用于存储标签排行
+      reputationThreshold: 50000, // 高声望用户过滤器
+      minReputation: 10000, // 默认最小声望
+      limit: 10, // 默认返回的标签数
+      topN: 5, // 默认值，用于参与度排行
+      isTagRanking: false, // 控制是否展示标签排行
       showDetail: false, // 控制弹窗显示
       questionDetail: {}, // 存储问题详情
     };
   },
   mounted() {
     this.fetchActivityData();
-    this.calculateEngagement();  // 默认展示前五个数据
   },
   methods: {
     async fetchActivityData() {
@@ -56,7 +91,7 @@ export default {
         const response = await axios.get('api/activity/all');
         if (response.data.code === 0) {
           this.activityData = response.data.data.records;
-          this.calculateEngagement();  // 数据获取完后重新计算默认展示
+          this.calculateEngagement(); // 数据获取完后重新计算默认展示
         }
       } catch (error) {
         console.error('Error fetching activity data:', error);
@@ -93,21 +128,55 @@ export default {
       this.topTopics = sortedTopics.slice(0, this.topN);
     },
 
+    async fetchTopTags() {
+      try {
+        const response = await axios.get('/api/activity/top-tags', {
+          params: {
+            minReputation: this.minReputation,
+            limit: this.limit,
+          },
+        });
+
+        if (response.data.code === 0) {
+          this.tagRanking = response.data.data.map(item => {
+            item.tag = item.tag.replace(/["[\]\\]/g, '');
+            return item;
+          });
+
+          console.log('Top tags:', this.tagRanking);
+        } else {
+          this.tagRanking = [];
+          console.log('No data available for the given parameters.');
+          console.log(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching top tags:', error);
+      }
+    },
+
+
+    toggleView() {
+      this.isTagRanking = !this.isTagRanking;
+
+      if (!this.isTagRanking) {
+        this.calculateEngagement();
+      }
+    },
+
     async viewDetails(activityId) {
       try {
         const response = await axios.get(`api/activity/question?activityId=${activityId}`);
         if (response.data.code === 0 && response.data.data) {
-          this.questionDetail = response.data.data; // 获取问题详情
-          this.showDetail = true; // 打开弹窗
+          this.questionDetail = response.data.data;
+          this.showDetail = true;
         } else {
-          // 如果没有数据，弹窗显示"没有数据"
           this.questionDetail = {};
           this.showDetail = true;
         }
       } catch (error) {
         console.error('Error fetching question details:', error);
         this.questionDetail = {};
-        this.showDetail = true; // 仍然打开弹窗显示没有数据
+        this.showDetail = true;
       }
     },
 
@@ -117,6 +186,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 .engagement-analysis {
@@ -266,4 +336,43 @@ ul {
     opacity: 1;
   }
 }
+
+.tag-ranking-container {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.tag-ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tag-ranking-table th,
+.tag-ranking-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+.tag-ranking-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.tag-ranking-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.tag-ranking-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.tag-ranking-table td {
+  color: #555;
+}
+
 </style>

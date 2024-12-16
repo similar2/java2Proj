@@ -80,12 +80,14 @@ export default {
         alert("Please enter a topic!");
         return;
       }
+      // 将输入转换为小写
+      const topicToSearch = this.topic.toLowerCase();
       try {
         const response = await axios.get(`/api/topic`, {
-          params: { topic: this.topic },
+          params: { topic: topicToSearch },
         });
         if (response.data.code === 0) {
-          this.topicFrequency = response.data.data[this.topic] || "No data available";
+          this.topicFrequency = response.data.data[topicToSearch] || "No data available";
         } else {
           alert("Failed to fetch topic frequency!");
         }
@@ -99,13 +101,15 @@ export default {
         alert("Please enter an exception name!");
         return;
       }
+      // 将输入转换为小写
+      const exceptionToSearch = this.exception.toLowerCase();
       try {
         const response = await axios.get(`/api/exception`, {
-          params: { exceptionName: this.exception },
+          params: { exceptionName: exceptionToSearch },
         });
         if (response.data.code === 0) {
           this.exceptionFrequency =
-              response.data.data[this.exception] || "No data available";
+              response.data.data[exceptionToSearch] || "No data available";
         } else {
           alert("Failed to fetch exception frequency!");
         }
@@ -114,7 +118,9 @@ export default {
       }
     },
 
-    async getTopNTopics() {
+
+
+  async getTopNTopics() {
       if (!this.topNTopics || this.topNTopics <= 0) {
         alert("Please enter a valid number for N!");
         return;

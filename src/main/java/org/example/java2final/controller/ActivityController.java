@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
+import java.util.List;
+import java.util.Map;
+
 @Tag(name = "活动记录接口")
 @RestController
 @RequestMapping("/activity")
@@ -39,5 +42,14 @@ public class ActivityController {
     @GetMapping("/question")
     public Result<?> getQuestionByActivityId(@RequestParam Long activityId) {
         return Result.success(activityService.getQuestionByActivityId(activityId));
+    }
+
+
+    @Operation(summary = "根据用户声望阈值获取最常见标签")
+    @GetMapping("/top-tags")
+    public Result<List<Map<String, Object>>> getTopTagsByReputation(
+            @RequestParam Long minReputation,
+            @RequestParam int limit) {
+        return activityService.getTopTagsByReputation(minReputation, limit);
     }
 }

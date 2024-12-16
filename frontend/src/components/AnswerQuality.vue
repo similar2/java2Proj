@@ -190,6 +190,8 @@ export default {
     // 生成趋势图
     async generateChart() {
       let apiUrl = "";
+      let showRightYAxis = false; // 默认不显示右侧 Y 轴
+
       switch (this.currentDataType) {
         case "reputation":
           apiUrl = "/api/answer/reputation";
@@ -199,6 +201,7 @@ export default {
           break;
         case "time":
           apiUrl = "/api/answer/time";
+          showRightYAxis = true; // 如果是 time 类型，则显示右侧 Y 轴
           break;
       }
 
@@ -219,6 +222,9 @@ export default {
 
           let xAxisData = [];
           let yAxisData = [];
+          let totalAnswersData = [];
+          let accumulatedAnswersData = [];  // 用来保存累积的 totalAnswers
+          let acceptedAnswersData = [];
           let xAxisName = '';
           let yAxisName = '';
 
@@ -233,8 +239,10 @@ export default {
             yAxisName = 'acceptanceRate';
           }
 
-          for (let i = 0; i < dataList.length; i += 20) {
-            let chunk = dataList.slice(i, i + 20);
+          let totalAnswersAccumulator = 0; // 累计的 totalAnswers
+
+          for (let i = 0; i < dataList.length; i += 25) {
+            let chunk = dataList.slice(i, i + 25);
 
             let xAvg = chunk.reduce((sum, item) => {
               let value = item[xAxisName];
@@ -246,23 +254,24 @@ export default {
               return (value !== undefined && value !== null && !isNaN(value)) ? sum + value : sum;
             }, 0) / chunk.length;
 
+            let totalAnswersSum = chunk.reduce((sum, item) => item.totalAnswers !== undefined ? sum + item.totalAnswers : sum, 0);
+            let acceptedAnswersSum = chunk.reduce((sum, item) => item.acceptedAnswers !== undefined ? sum + item.acceptedAnswers : sum, 0);
+
+            // 累积的 totalAnswers
+            totalAnswersAccumulator += totalAnswersSum;
+
             if (!isNaN(xAvg) && !isNaN(yAvg)) {
               xAxisData.push(xAvg);
               yAxisData.push(yAvg);
+              totalAnswersData.push(totalAnswersSum);
+              accumulatedAnswersData.push(totalAnswersAccumulator); // 保存累积数据
+              acceptedAnswersData.push(acceptedAnswersSum);
             }
           }
 
           const { slope, intercept } = this.linearRegression(xAxisData, yAxisData);
 
-          console.log('Slope:', slope);
-          console.log('Intercept:', intercept);
-
           let regressionLineData = xAxisData.map(x => slope * x + intercept);
-
-          // Log the data before rendering
-          console.log('xAxisData:', xAxisData);
-          console.log('yAxisData:', yAxisData);
-          console.log('Regression Line Data:', regressionLineData);
 
           const chart = echarts.init(document.getElementById('chart-container'));
 
@@ -279,10 +288,19 @@ export default {
               data: xAxisData,
               name: xAxisName.charAt(0).toUpperCase() + xAxisName.slice(1),
             },
-            yAxis: {
-              type: 'value',
-              name: yAxisName.charAt(0).toUpperCase() + yAxisName.slice(1),
-            },
+            yAxis: [
+              {
+                type: 'value',
+                name: yAxisName.charAt(0).toUpperCase() + yAxisName.slice(1),
+              },
+              showRightYAxis ? {
+                type: 'value',
+                name: 'Total/Accepted Answers',
+                position: 'right',
+                axisLine: { show: true },
+                axisLabel: { formatter: '{value}' },
+              } : null
+            ].filter(Boolean), // 如果不需要右侧 Y 轴，则去掉它
             series: [
               {
                 data: yAxisData,
@@ -302,7 +320,40 @@ export default {
                 },
                 symbol: 'none',
               },
-            ],
+              showRightYAxis ? {
+                data: totalAnswersData,
+                type: 'line',
+                yAxisIndex: 1,
+                lineStyle: {
+                  color: '#34a853',
+                  width: 2,
+                },
+                smooth: true,
+                name: 'Total Answers',
+              } : null,
+              showRightYAxis ? {
+                data: acceptedAnswersData,
+                type: 'line',
+                yAxisIndex: 1,
+                lineStyle: {
+                  color: '#ea4335',
+                  width: 2,
+                },
+                smooth: true,
+                name: 'Accepted Answers',
+              } : null,
+              showRightYAxis ? {
+                data: accumulatedAnswersData,  // 添加累积的 totalAnswers 数据
+                type: 'line',
+                yAxisIndex: 1,
+                lineStyle: {
+                  color: '#f39c12',
+                  width: 2,
+                },
+                smooth: true,
+                name: 'Accumulated Total Answers',  // 累计答案数线
+              } : null
+            ].filter(Boolean), // 如果不需要右侧的线，则去掉它
             graphic: [
               {
                 type: 'text',
@@ -340,6 +391,9 @@ export default {
 
       return { slope, intercept };
     }
+
+
+
 
   },
 };

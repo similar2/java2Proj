@@ -13,7 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.annotation.ApplicationScope;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @ApplicationScope
 @Slf4j
@@ -44,5 +47,13 @@ public class ActivityService {
     public Question getQuestionByActivityId(Long activityId) {
         return questionDAO.getQuestionByQuestionId(activityId);
     }
+
+    public Result<List<Map<String, Object>>> getTopTagsByReputation(Long minReputation, int limit) {
+        List<Map<String, Object>> tags = activityDAO.getTopTagsByReputation(minReputation, limit);
+
+        return Result.success(tags);
+    }
+
+
 
 }
