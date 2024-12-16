@@ -74,9 +74,9 @@ public interface AnswerDAO extends MPJBaseMapper<Answer> {
             JOIN answer ON question.question_id = answer.question_id
             GROUP BY elapsed_minutes
             ORDER BY elapsed_minutes
-
+            LIMIT #{pageSize} OFFSET #{offset}
             """)
-    List<AnswerTimeDistributionVO> getAnswerTimeDistributions();
+    List<AnswerTimeDistributionVO> getAnswerTimeDistributions(@Param("pageSize") Integer pageSize, @Param("offset") Integer offset);
 
     @Select("""
     SELECT u.reputation AS reputation_score,

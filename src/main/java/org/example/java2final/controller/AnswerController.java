@@ -24,8 +24,10 @@ public class AnswerController {
 
     @Operation(summary = "答案创建时间与被接受率的折线图")
     @GetMapping("/time")
-    public Result<List<AnswerTimeDistributionVO>> getLineChart() {
-        return answerService.getAnswerTimeDistribution();
+    public Result<List<AnswerTimeDistributionVO>> getLineChart(
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "1") int currentPage)  {
+        return answerService.getAnswerTimeDistribution(pageSize, currentPage);
     }
 
     @Operation(summary = "答案得分与用户声誉关系")
