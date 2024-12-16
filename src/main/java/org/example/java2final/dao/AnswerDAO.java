@@ -79,52 +79,53 @@ public interface AnswerDAO extends MPJBaseMapper<Answer> {
     List<AnswerTimeDistributionVO> getAnswerTimeDistributions(@Param("pageSize") Integer pageSize, @Param("offset") Integer offset);
 
     @Select("""
-    SELECT u.reputation AS reputation_score,
-           AVG(a.score) AS average_score
-    FROM "user" u
-             JOIN
-         answer a ON CAST(u.user_id AS bigint) = CAST(a.owner_user_id AS bigint)
-    GROUP BY u.reputation
-    ORDER BY u.reputation
-    LIMIT #{pageSize} OFFSET #{offset}
-""")
+                SELECT u.reputation AS reputation_score,
+                       AVG(a.score) AS average_score
+                FROM "user" u
+                         JOIN
+                     answer a ON CAST(u.user_id AS bigint) = CAST(a.owner_user_id AS bigint)
+                GROUP BY u.reputation
+                having AVG(a.score)<>0
+                ORDER BY u.reputation
+                LIMIT #{pageSize} OFFSET #{offset}
+            """)
     List<ReputationScoreVO> getReputationScore(@Param("pageSize") Integer pageSize, @Param("offset") Integer offset);
 
 
     @Select("""
-    WITH Stats AS (SELECT AVG(LENGTH(a.body))    AS avg_length,
-                          STDDEV(LENGTH(a.body)) AS stddev_length,
-                          AVG(q.view_count)      AS avg_view_count,
-                          STDDEV(q.view_count)   AS stddev_view_count
-                   FROM answer a
-                            JOIN
-                        question q ON a.question_id = q.question_id),
-    Normalized
-        AS (SELECT EXTRACT(DAY FROM CURRENT_DATE - TO_TIMESTAMP(u.creation_date))       AS account_age_days,
-                      LENGTH(a.body)                                                       AS answer_length,
-                      q.view_count,
-                      (LENGTH(a.body) - Stats.avg_length) / NULLIF(Stats.stddev_length, 0) AS normalized_length,
-                      (q.view_count - Stats.avg_view_count) /
-                      NULLIF(Stats.stddev_view_count, 0)                                   AS normalized_view_count
-             FROM "user" u
-                      JOIN
-                  answer a ON CAST(u.user_id AS BIGINT) = CAST(a.owner_user_id AS BIGINT)
-                      JOIN
-                  question q ON a.question_id = q.question_id,
-                  Stats),
-    WeightedQuality AS (SELECT account_age_days,
-                            answer_length,
-                            view_count,
-                            normalized_length,
-                            normalized_view_count,
-                            (0.33 * normalized_length + 0.67 * normalized_view_count) AS quality_metric -- Adjust weights here
-                       FROM Normalized)
-    SELECT account_age_days,
-           quality_metric
-    FROM WeightedQuality
-    ORDER BY quality_metric DESC
-    LIMIT #{pageSize} OFFSET #{offset}
-""")
+                WITH Stats AS (SELECT AVG(LENGTH(a.body))    AS avg_length,
+                                      STDDEV(LENGTH(a.body)) AS stddev_length,
+                                      AVG(q.view_count)      AS avg_view_count,
+                                      STDDEV(q.view_count)   AS stddev_view_count
+                               FROM answer a
+                                        JOIN
+                                    question q ON a.question_id = q.question_id),
+                Normalized
+                    AS (SELECT EXTRACT(DAY FROM CURRENT_DATE - TO_TIMESTAMP(u.creation_date))       AS account_age_days,
+                                  LENGTH(a.body)                                                       AS answer_length,
+                                  q.view_count,
+                                  (LENGTH(a.body) - Stats.avg_length) / NULLIF(Stats.stddev_length, 0) AS normalized_length,
+                                  (q.view_count - Stats.avg_view_count) /
+                                  NULLIF(Stats.stddev_view_count, 0)                                   AS normalized_view_count
+                         FROM "user" u
+                                  JOIN
+                              answer a ON CAST(u.user_id AS BIGINT) = CAST(a.owner_user_id AS BIGINT)
+                                  JOIN
+                              question q ON a.question_id = q.question_id,
+                              Stats),
+                WeightedQuality AS (SELECT account_age_days,
+                                        answer_length,
+                                        view_count,
+                                        normalized_length,
+                                        normalized_view_count,
+                                        (0.33 * normalized_length + 0.67 * normalized_view_count) AS quality_metric -- Adjust weights here
+                                   FROM Normalized)
+                SELECT account_age_days,
+                       quality_metric
+                FROM WeightedQuality
+                ORDER BY quality_metric DESC
+                LIMIT #{pageSize} OFFSET #{offset}
+            """)
     List<CustomScoreVO> getCustomScore(@Param("pageSize") Integer pageSize, @Param("offset") Integer offset);
 
 }
