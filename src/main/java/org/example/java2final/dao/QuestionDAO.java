@@ -34,4 +34,7 @@ public interface QuestionDAO extends MPJBaseMapper<Question> {
                 LIMIT #{size}
             """)
     List<Map<String, Integer>> findTopTags(@Param("size") Long size);
+
+    @Select("SELECT * FROM question WHERE question_id = #{questionId}")
+    Question getQuestionByQuestionId(Long questionId);
 }

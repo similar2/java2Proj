@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/java2
     username: postgres
-    password: 123456
+    password: Hunter2010
     driver-class-name: org.postgresql.Driver
     type: com.alibaba.druid.pool.DruidDataSource
 

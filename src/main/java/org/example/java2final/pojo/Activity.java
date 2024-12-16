@@ -16,6 +16,6 @@ public class Activity {
     Integer id;
     Long questionId;
     Long userId;
-    String activityType;//should be in 'answer','comment' or 'edit'
+    String activityType;
     Long userReputation;
 }

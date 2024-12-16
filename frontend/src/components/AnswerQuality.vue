@@ -1,7 +1,7 @@
 <template>
-  <div>
-    <h1>Answer Quality Analysis</h1>
-    <p>This page will analyze the quality of answers.</p>
+  <div class="container">
+    <h1 class="title">Answer Quality Analysis</h1>
+    <p class="intro">This page will analyze the quality of answers.</p>
 
     <!-- 切换按钮 -->
     <div class="toggle-buttons">
@@ -27,35 +27,38 @@
 
     <!-- 数据展示表格 -->
     <h2>{{ currentTableTitle }}</h2>
-    <div v-if="loading">Loading data...</div>
-    <div v-else>
-      <table v-if="dataList.length > 0">
-        <thead>
-        <tr>
-          <th v-for="(header, index) in tableHeaders" :key="index">{{ header }}</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="(item, index) in dataList" :key="index">
-          <td>{{ item.reputationScore || item.accountAgeDays || item.elapsedMinutes }}</td>
-          <td>{{ item.averageScore || item.qualityMetric || item.totalAnswers }}</td>
-          <td v-if="currentDataType === 'time'">{{ item.acceptedAnswers }}</td>
-          <td v-if="currentDataType === 'time'">{{ item.acceptanceRate }}</td>
+    <div v-if="loading" class="loading">
+      <span class="spinner"></span> Loading data...
+    </div>
 
-          <td>{{ isHighQuality(item) }}</td>
-<!--          <td>-->
-<!--            &lt;!&ndash; 添加得分列，根据不同数据类型计算评分 &ndash;&gt;-->
-<!--            <span>{{ calculateScore(item) }}</span>-->
-<!--          </td>-->
-        </tr>
-        </tbody>
-      </table>
-      <div v-if="dataList.length === 0">No data available.</div>
+    <div v-else>
+      <div v-if="dataList.length > 0">
+        <table>
+          <thead>
+          <tr>
+            <th v-for="(header, index) in tableHeaders" :key="index">{{ header }}</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in dataList" :key="index">
+            <td v-if="currentDataType === 'reputation'">{{ handleZeroValue(item.reputationScore) }}</td>
+            <td v-if="currentDataType === 'reputation'">{{ handleZeroValue(item.averageScore) }}</td>
+            <td v-if="currentDataType === 'custom'">{{ handleZeroValue(item.accountAgeDays) }}</td>
+            <td v-if="currentDataType === 'custom'">{{ handleZeroValue(item.qualityMetric) }}</td>
+            <td v-if="currentDataType === 'time'">{{ handleZeroValue(item.elapsedMinutes) }}</td>
+            <td v-if="currentDataType === 'time'">{{ handleZeroValue(item.totalAnswers) }}</td>
+            <td v-if="currentDataType === 'time'">{{ handleZeroValue(item.acceptedAnswers) }}</td>
+            <td v-if="currentDataType === 'time'">{{ handleZeroValue(item.acceptanceRate) }}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="no-data">No data available.</div>
     </div>
 
     <!-- 分页控件 -->
     <div class="pagination">
-      <button @click="changePage('prev')" :disabled="currentPage <= 1">Previous</button>
+      <button @click="changePage('prev')" :disabled="currentPage <= 1" class="pagination-btn">Previous</button>
       <span>Page:</span>
       <input
           v-model.number="inputPage"
@@ -63,15 +66,25 @@
           type="number"
           min="1"
           placeholder="Page number"
+          class="pagination-input"
       />
-      <button @click="jumpToPage">Jump</button>
-      <button @click="changePage('next')">Next</button>
+      <button @click="jumpToPage" class="pagination-btn">Jump</button>
+      <button @click="changePage('next')" class="pagination-btn">Next</button>
     </div>
+
+    <!-- 绘图按钮 -->
+    <div class="chart-btn-container">
+      <button @click="generateChart" class="chart-btn">Generate Trend Chart</button>
+    </div>
+
+    <!-- ECharts 图表容器 -->
+    <div id="chart-container" style="width: 100%; height: 400px;"></div>
   </div>
 </template>
 
 <script>
 import axios from "axios";
+import * as echarts from "echarts";
 
 export default {
   name: "AnswerQuality",
@@ -83,14 +96,13 @@ export default {
       currentPage: 1, // 当前页码
       pageSize: 10, // 每页数据量
       inputPage: 1, // 用户输入的页码
-      tableHeaders: ["Score", "Average/Comment", "High Quality"], // 表格头部，新增High Quality列
+      tableHeaders: ["Score", "Average/Comment"], // 表格头部
     };
   },
   computed: {
     // 动态标题
     currentTableTitle() {
-      // Ensure this computed property returns the appropriate title based on the data type
-      return this.currentDataType === 'reputation' ? 'Reputation Analysis' : 'Custom Analysis';
+      return this.currentDataType === 'reputation' ? 'Reputation Analysis' : this.currentDataType === 'custom' ? 'Custom Analysis' : 'Time Analysis';
     },
   },
   mounted() {
@@ -108,11 +120,11 @@ export default {
     // 更新表头
     updateTableHeaders() {
       if (this.currentDataType === "reputation") {
-        this.tableHeaders = ["Reputation Score", "Average Score", "High Quality"];
+        this.tableHeaders = ["Reputation Score", "Average Score"];
       } else if (this.currentDataType === "custom") {
-        this.tableHeaders = ["Account Age (Days)", "Quality Metric", "High Quality"];
+        this.tableHeaders = ["Account Age (Days)", "Quality Metric"];
       } else if (this.currentDataType === "time") {
-        this.tableHeaders = ["Elapsed Minutes", "Total Answers", "Accepted Answers", "Acceptance Rate", "High Quality"];
+        this.tableHeaders = ["Elapsed Minutes", "Total Answers", "Accepted Answers", "Acceptance Rate"];
       }
     },
 
@@ -138,7 +150,6 @@ export default {
             currentPage: this.currentPage,
           },
         });
-        console.log("Response:", response.data);
         if (response.data.code === 0) {
           this.dataList = response.data.data || [];
         } else {
@@ -171,97 +182,332 @@ export default {
       }
     },
 
-    // 根据数据计算得分
-    calculateScore(item) {
-      let score = 0;
-      if (this.currentDataType === "reputation") {
-        score = item.reputationScore * 0.5 + item.averageScore * 0.5; // Example score logic
-      } else if (this.currentDataType === "custom") {
-        score = item.qualityMetric * 0.7 + item.accountAgeDays * 0.3; // Example score logic
-      } else if (this.currentDataType === "time") {
-        score = item.elapsedMinutes * 0.4 + item.acceptedAnswers * 0.6; // Example score logic
-      }
-      return score.toFixed(2); // Return formatted score
+    // 处理0值展示
+    handleZeroValue(value) {
+      return value === undefined || value === null ? '0' : value;
     },
 
-    // 判断是否为高质量数据
-    isHighQuality(item) {
-      // Example of high-quality criteria (can be adjusted as needed)
-      if (this.currentDataType === "reputation") {
-        return item.reputationScore >= 50 && item.averageScore >= 4 ? 'Yes' : 'No';
-      } else if (this.currentDataType === "custom") {
-        return item.qualityMetric >= 0.8 && item.accountAgeDays > 1000 ? 'Yes' : 'No';
-      } else if (this.currentDataType === "time") {
-        return item.acceptedAnswers > 2 && item.acceptanceRate >= 0.5 ? 'Yes' : 'No';
+    // 生成趋势图
+    async generateChart() {
+      let apiUrl = "";
+      switch (this.currentDataType) {
+        case "reputation":
+          apiUrl = "/api/answer/reputation";
+          break;
+        case "custom":
+          apiUrl = "/api/answer/custom";
+          break;
+        case "time":
+          apiUrl = "/api/answer/time";
+          break;
       }
-      return 'No';
+
+      try {
+        const response = await axios.get(apiUrl, {
+          params: {
+            pageSize: 1000,
+            currentPage: 1,
+          },
+        });
+
+        if (response.data.code === 0) {
+          let dataList = response.data.data || [];
+
+          if (this.currentDataType === "custom") {
+            dataList = dataList.sort((a, b) => a.accountAgeDays - b.accountAgeDays);
+          }
+
+          let xAxisData = [];
+          let yAxisData = [];
+          let xAxisName = '';
+          let yAxisName = '';
+
+          if (this.currentDataType === "reputation") {
+            xAxisName = 'reputationScore';
+            yAxisName = 'averageScore';
+          } else if (this.currentDataType === "custom") {
+            xAxisName = 'accountAgeDays';
+            yAxisName = 'qualityMetric';
+          } else if (this.currentDataType === "time") {
+            xAxisName = 'elapsedMinutes';
+            yAxisName = 'acceptanceRate';
+          }
+
+          for (let i = 0; i < dataList.length; i += 20) {
+            let chunk = dataList.slice(i, i + 20);
+
+            let xAvg = chunk.reduce((sum, item) => {
+              let value = item[xAxisName];
+              return (value !== undefined && value !== null && !isNaN(value)) ? sum + value : sum;
+            }, 0) / chunk.length;
+
+            let yAvg = chunk.reduce((sum, item) => {
+              let value = item[yAxisName];
+              return (value !== undefined && value !== null && !isNaN(value)) ? sum + value : sum;
+            }, 0) / chunk.length;
+
+            if (!isNaN(xAvg) && !isNaN(yAvg)) {
+              xAxisData.push(xAvg);
+              yAxisData.push(yAvg);
+            }
+          }
+
+          const { slope, intercept } = this.linearRegression(xAxisData, yAxisData);
+
+          console.log('Slope:', slope);
+          console.log('Intercept:', intercept);
+
+          let regressionLineData = xAxisData.map(x => slope * x + intercept);
+
+          // Log the data before rendering
+          console.log('xAxisData:', xAxisData);
+          console.log('yAxisData:', yAxisData);
+          console.log('Regression Line Data:', regressionLineData);
+
+          const chart = echarts.init(document.getElementById('chart-container'));
+
+          const option = {
+            title: {
+              text: 'Answer Quality Trend',
+              left: 'center',
+            },
+            tooltip: {
+              trigger: 'item',
+            },
+            xAxis: {
+              type: 'category',
+              data: xAxisData,
+              name: xAxisName.charAt(0).toUpperCase() + xAxisName.slice(1),
+            },
+            yAxis: {
+              type: 'value',
+              name: yAxisName.charAt(0).toUpperCase() + yAxisName.slice(1),
+            },
+            series: [
+              {
+                data: yAxisData,
+                type: 'scatter',
+                symbolSize: 8,
+                itemStyle: {
+                  color: '#007bff',
+                },
+              },
+              {
+                data: regressionLineData,
+                type: 'line',
+                smooth: true,
+                lineStyle: {
+                  color: '#ff6600',
+                  width: 2,
+                },
+                symbol: 'none',
+              },
+            ],
+            graphic: [
+              {
+                type: 'text',
+                left: 'center',
+                top: 'bottom',
+                style: {
+                  text: 'Regression Line',
+                  fill: '#ff6600',
+                  font: 'bold 16px sans-serif',
+                },
+                position: [0, 20],
+                z: 200
+              }
+            ]
+          };
+
+          chart.setOption(option);
+        } else {
+          console.error("Error fetching data:", response.data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    },
+
+    linearRegression(x, y) {
+      const n = x.length;
+      const xSum = x.reduce((acc, xi) => acc + xi, 0);
+      const ySum = y.reduce((acc, yi) => acc + yi, 0);
+      const xSquaredSum = x.reduce((acc, xi) => acc + xi * xi, 0);
+      const xySum = x.reduce((acc, xi, index) => acc + xi * y[index], 0);
+
+      const slope = (n * xySum - xSum * ySum) / (n * xSquaredSum - xSum * xSum);
+      const intercept = (ySum - slope * xSum) / n;
+
+      return { slope, intercept };
     }
+
   },
 };
 </script>
 
 <style scoped>
-h1 {
+/* 样式 */
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.title {
+  text-align: center;
+  font-size: 36px;
   color: #333;
+  margin-bottom: 10px;
 }
-h2 {
-  color: #555;
+
+.intro {
+  text-align: center;
+  font-size: 16px;
+  color: #777;
+  margin-bottom: 20px;
+  font-style: italic;
 }
+
 .toggle-buttons {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-top: 20px;
 }
+
 .toggle-buttons button {
-  padding: 8px 16px;
   margin: 0 10px;
-  background-color: #f0f0f0;
+  padding: 10px 20px;
+  font-size: 16px;
   border: 1px solid #ccc;
-  cursor: pointer;
+  background-color: #f5f5f5;
   border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
+
+.toggle-buttons button:hover {
+  background-color: #007bff;
+  color: white;
+}
+
 .toggle-buttons button.active {
   background-color: #007bff;
   color: white;
-  border-color: #007bff;
 }
+
+.table-container {
+  margin-top: 20px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
-}
-th,
-td {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  text-align: center;
-}
-.pagination {
   margin-top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+table th,
+table td {
+  padding: 12px 15px;
   text-align: center;
+  border: 1px solid #ccc;
+}
+
+table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+table th {
+  background-color: #007bff;
+  color: white;
+}
+
+.pagination {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-top: 20px;
 }
-.pagination button {
-  margin: 0 5px;
-  padding: 5px 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.pagination button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.pagination input {
+
+.pagination-input {
   width: 60px;
   margin: 0 10px;
   padding: 5px;
-  text-align: center;
-  border: 1px solid #ddd;
   border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.pagination-btn {
+  margin: 0 5px;
+  padding: 5px 15px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-btn:hover {
+  background-color: #0056b3;
+}
+
+.pagination-btn:disabled {
+  background-color: #ccc;
+}
+
+.chart-btn-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.chart-btn {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 4px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.chart-btn:hover {
+  background-color: #218838;
+}
+
+#chart-container {
+  width: 100%;
+  height: 400px;
+  margin-top: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.no-data {
+  text-align: center;
+  color: #f00;
+}
+
+.loading {
+  text-align: center;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>

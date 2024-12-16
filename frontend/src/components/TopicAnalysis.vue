@@ -45,9 +45,13 @@
     <p v-else-if="!loading && topics.length === 0">No data available</p>
 
     <!-- View mode toggle -->
-    <div>
-      <button @click="toggleView('table')">Table View</button>
-      <button @click="toggleView('chart')">Chart View</button>
+    <div class="toggle-container">
+      <button
+          @click="toggleView('table')"
+          :class="{ active: viewMode === 'table' }">Table View</button>
+      <button
+          @click="toggleView('chart')"
+          :class="{ active: viewMode === 'chart' }">Chart View</button>
     </div>
   </div>
 </template>
@@ -185,17 +189,20 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 30px;
   font-family: 'Arial', sans-serif;
   max-width: 900px;
   margin: auto;
+  background-color: #f7f7f7;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* 标题样式 */
 .title {
-  font-size: 24px;
+  font-size: 28px;
   color: #007BFF;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   text-align: center;
 }
 
@@ -212,28 +219,35 @@ label {
 }
 
 input {
-  padding: 8px;
+  padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
-  width: 100px;
+  width: 120px;
+  transition: border-color 0.3s;
+}
+
+input:focus {
+  border-color: #007BFF;
 }
 
 /* Button to toggle between chart and table */
 .toggle-container {
   display: flex;
-  margin-bottom: 20px;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
 }
 
 button {
-  padding: 10px 20px;
-  border: 1px solid #007BFF;
-  border-radius: 4px;
+  padding: 12px 24px;
+  border: 2px solid #007BFF;
+  border-radius: 5px;
   background-color: #fff;
   color: #007BFF;
   font-size: 16px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, color 0.3s, transform 0.2s;
 }
 
 button.active {
@@ -243,6 +257,7 @@ button.active {
 
 button:hover {
   background-color: #f1f1f1;
+  transform: scale(1.05);
 }
 
 /* 图表容器 */
@@ -294,35 +309,29 @@ button:hover {
   width: 100%;
   margin-top: 20px;
   border-collapse: collapse;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.topics-table th, .topics-table td {
+.topics-table th,
+.topics-table td {
   padding: 12px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
 
 .topics-table th {
-  background-color: #f2f2f2;
-  font-weight: bold;
+  background-color: #007BFF;
+  color: white;
 }
 
-.topics-table tbody tr:nth-child(odd) {
-  background-color: #f9f9f9;
-}
-
-.topics-table tbody tr:hover {
+.topics-table tr:hover {
   background-color: #f1f1f1;
 }
 
-@media (max-width: 768px) {
-  .input-container {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .input-container label {
-    margin-bottom: 5px;
-  }
+/* No data message */
+p {
+  font-size: 18px;
+  color: #999;
+  text-align: center;
 }
 </style>

@@ -29,11 +29,11 @@ public class ExceptionController {
         return exceptionService.getTopNExceptions(size,type);
     }
 
-    @Operation(summary = "获取异常出现次数")
-    @GetMapping("")
-    public Result<Map<String, Integer>> getExceptionFrequency(
-            @RequestParam String exceptionName
-    ) {
-        return exceptionService.getExceptionFrequency(exceptionName);
-    }
+        @Operation(summary = "获取异常出现次数")
+        @GetMapping("")
+        public Result<Map<String, Integer>> getExceptionFrequency(
+                @RequestParam String exceptionName
+        ) {
+            return exceptionService.getExceptionFrequency(exceptionName);
+        }
 }

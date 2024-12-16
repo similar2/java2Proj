@@ -28,7 +28,6 @@
       <div class="view-toggle">
         <button @click="viewMode = 'table'; fetchData()" :class="{ active: viewMode === 'table' }">Table View</button>
         <button @click="viewMode = 'chart'; fetchData()" :class="{ active: viewMode === 'chart' }">Chart View</button>
-
       </div>
 
       <!-- Conditionally render Table or Chart -->
@@ -148,8 +147,7 @@ export default {
 </script>
 
 <style scoped>
-/* Your original styles remain unchanged */
-
+/* Container styles */
 .container {
   display: flex;
   justify-content: center;
@@ -158,21 +156,27 @@ export default {
   background-color: #f4f7fa;
 }
 
+/* Card styling */
 .card {
   background-color: white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 30px;
   width: 100%;
   max-width: 800px;
   margin: 20px;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
 }
 
 h1 {
-  color: #FF5722;
   text-align: center;
   font-size: 2rem;
   margin-bottom: 20px;
+  font-weight: bold;
 }
 
 p {
@@ -207,15 +211,16 @@ select, input {
 }
 
 button {
-  background-color: #4CAF50;
+  background-color: #FF5722;
   color: white;
-  padding: 8px 16px;  /* Reduced padding for a smaller button */
+  padding: 10px 18px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;  /* Reduced font size for smaller button text */
-  width: auto;  /* Ensure it doesn't stretch full width */
-  margin-top: 10px;  /* Optional margin for spacing */
+  font-size: 14px;
+  width: auto;
+  margin-top: 10px;
+  transition: transform 0.3s ease, background-color 0.3s ease;
 }
 
 button:disabled {
@@ -224,7 +229,8 @@ button:disabled {
 }
 
 button:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: #FF7043;
+  transform: scale(1.05);
 }
 
 .loading {
@@ -273,11 +279,16 @@ tbody tr:hover {
   cursor: pointer;
   font-size: 14px;
   margin: 0 5px;
+  transition: background-color 0.3s ease;
 }
 
 .view-toggle button.active {
   background-color: #FF5722;
   color: white;
+}
+
+.view-toggle button:hover {
+  background-color: #FF7043;
 }
 
 @media (max-width: 768px) {
