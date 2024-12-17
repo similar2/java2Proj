@@ -240,6 +240,7 @@ export default {
           }
 
           let totalAnswersAccumulator = 0; // 累计的 totalAnswers
+          let acceptedAnswersAccumulator = 0;
 
           for (let i = 0; i < dataList.length; i += 25) {
             let chunk = dataList.slice(i, i + 25);
@@ -259,21 +260,23 @@ export default {
 
             // 累积的 totalAnswers
             totalAnswersAccumulator += totalAnswersSum;
+            acceptedAnswersAccumulator += acceptedAnswersSum;
 
             if (!isNaN(xAvg) && !isNaN(yAvg)) {
               xAxisData.push(xAvg);
               yAxisData.push(yAvg);
-              totalAnswersData.push(totalAnswersSum);
+              //totalAnswersData.push(totalAnswersSum);
               accumulatedAnswersData.push(totalAnswersAccumulator); // 保存累积数据
-              acceptedAnswersData.push(acceptedAnswersSum);
+              acceptedAnswersData.push(acceptedAnswersAccumulator);
             }
           }
 
           const { slope, intercept } = this.linearRegression(xAxisData, yAxisData);
 
           let regressionLineData = xAxisData.map(x => slope * x + intercept);
-
-          const chart = echarts.init(document.getElementById('chart-container'));
+          const chartContainer = document.getElementById('chart-container');
+          const chart = echarts.init(chartContainer);
+          chart.clear();
 
           const option = {
             title: {
@@ -300,7 +303,7 @@ export default {
                 axisLine: { show: true },
                 axisLabel: { formatter: '{value}' },
               } : null
-            ].filter(Boolean), // 如果不需要右侧 Y 轴，则去掉它
+            ].filter(Boolean),
             series: [
               {
                 data: yAxisData,
@@ -340,7 +343,7 @@ export default {
                   width: 2,
                 },
                 smooth: true,
-                name: 'Accepted Answers',
+                name: 'Accumulated Accepted Answers',
               } : null,
               showRightYAxis ? {
                 data: accumulatedAnswersData,  // 添加累积的 totalAnswers 数据
