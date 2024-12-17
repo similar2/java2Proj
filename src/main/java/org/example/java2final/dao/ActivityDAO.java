@@ -24,13 +24,19 @@ public interface ActivityDAO extends MPJBaseMapper<Activity> {
     @Select("SELECT * FROM activity WHERE user_reputation > #{reputationThreshold}")
     List<Activity> getActivitiesWithReputationGreaterThan(@Param("reputationThreshold") long reputationThreshold);
 
-    @Select("SELECT UNNEST(STRING_TO_ARRAY(q.tags, ',')) AS tag, COUNT(*) AS count " +
-            "FROM activity a " +
-            "JOIN question q ON a.question_id = q.question_id " +
-            "WHERE a.user_reputation > #{minReputation} " +
-            "GROUP BY tag " +
-            "ORDER BY count DESC " +
-            "LIMIT #{limit}")
+    @Select("""
+            SELECT tag, COUNT(*) AS count
+            FROM (
+                SELECT UNNEST(STRING_TO_ARRAY(q.tags, ',')) AS tag
+                FROM activity a
+                JOIN question q ON a.question_id = q.question_id
+                WHERE a.user_reputation > #{minReputation}
+            ) AS unnested_tags
+            WHERE tag not like '__java_' and tag not like '__java__'
+            GROUP BY tag
+            ORDER BY count DESC
+            LIMIT #{limit};
+            """)
     List<Map<String, Object>> getTopTagsByReputation(
             @Param("minReputation") Long minReputation,
             @Param("limit") int limit);
