@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @Data
 public class CustomScoreVO {
     private Integer accountAgeDays;
-    private Double qualityMetric;
+    private Float qualityMetric;
 }

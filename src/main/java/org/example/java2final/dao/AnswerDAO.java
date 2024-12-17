@@ -16,34 +16,33 @@ import java.util.Map;
 @Mapper
 public interface AnswerDAO extends MPJBaseMapper<Answer> {
     @Select("""
-    SELECT exception_name AS name,
-           COUNT(*) AS frequency,
-           CASE
-               -- Match 'Exception' or 'Throwable' but exclude 'Error' types more specifically
-               WHEN exception_name LIKE '%Exception%' AND exception_name NOT LIKE '%Error%' THEN 'exception'
-               WHEN exception_name LIKE '%Error%' OR exception_name LIKE '%Failure%' THEN 'error'
-               ELSE 'unknown'
-           END AS type
-    FROM (
-        -- Extract exceptions from the question table
-        SELECT unnest(regexp_matches(content, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
-        FROM question
-        UNION ALL
-        -- Extract exceptions from the answer table
-        SELECT unnest(regexp_matches(body, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
-        FROM answer
-    ) AS exceptions
-    WHERE exception_name NOT IN ('Exception', 'Error')  -- Exclude raw terms
-    AND (
-        ('exception' = #{type} AND exception_name LIKE '%Exception%' AND exception_name NOT LIKE '%Error%') OR
-        ('error' = #{type} AND exception_name LIKE '%Error%')
-    )
-    GROUP BY exception_name
-    ORDER BY frequency DESC
-    LIMIT #{size}
-""")
+                SELECT exception_name AS name,
+                       COUNT(*) AS frequency,
+                       CASE
+                           -- Match 'Exception' or 'Throwable' but exclude 'Error' types more specifically
+                           WHEN exception_name LIKE '%Exception%' AND exception_name NOT LIKE '%Error%' THEN 'exception'
+                           WHEN exception_name LIKE '%Error%' OR exception_name LIKE '%Failure%' THEN 'error'
+                           ELSE 'unknown'
+                       END AS type
+                FROM (
+                    -- Extract exceptions from the question table
+                    SELECT unnest(regexp_matches(content, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
+                    FROM question
+                    UNION ALL
+                    -- Extract exceptions from the answer table
+                    SELECT unnest(regexp_matches(body, '([a-zA-Z0-9_]+(Exception|Error|Throwable|Failure))', 'g')) AS exception_name
+                    FROM answer
+                ) AS exceptions
+                WHERE exception_name NOT IN ('Exception', 'Error')  -- Exclude raw terms
+                AND (
+                    ('exception' = #{type} AND exception_name LIKE '%Exception%' AND exception_name NOT LIKE '%Error%') OR
+                    ('error' = #{type} AND exception_name LIKE '%Error%')
+                )
+                GROUP BY exception_name
+                ORDER BY frequency DESC
+                LIMIT #{size}
+            """)
     List<Map<String, Object>> findExceptionFrequenciesByType(@Param("size") Integer size, @Param("type") String type);
-
 
 
     @Select("""
@@ -93,38 +92,21 @@ public interface AnswerDAO extends MPJBaseMapper<Answer> {
 
 
     @Select("""
-                WITH Stats AS (SELECT AVG(LENGTH(a.body))    AS avg_length,
-                                      STDDEV(LENGTH(a.body)) AS stddev_length,
-                                      AVG(q.view_count)      AS avg_view_count,
-                                      STDDEV(q.view_count)   AS stddev_view_count
-                               FROM answer a
-                                        JOIN
-                                    question q ON a.question_id = q.question_id),
-                Normalized
-                    AS (SELECT EXTRACT(DAY FROM CURRENT_DATE - TO_TIMESTAMP(u.creation_date))       AS account_age_days,
-                                  LENGTH(a.body)                                                       AS answer_length,
-                                  q.view_count,
-                                  (LENGTH(a.body) - Stats.avg_length) / NULLIF(Stats.stddev_length, 0) AS normalized_length,
-                                  (q.view_count - Stats.avg_view_count) /
-                                  NULLIF(Stats.stddev_view_count, 0)                                   AS normalized_view_count
-                         FROM "user" u
-                                  JOIN
-                              answer a ON CAST(u.user_id AS BIGINT) = CAST(a.owner_user_id AS BIGINT)
-                                  JOIN
-                              question q ON a.question_id = q.question_id,
-                              Stats),
-                WeightedQuality AS (SELECT account_age_days,
-                                        answer_length,
-                                        view_count,
-                                        normalized_length,
-                                        normalized_view_count,
-                                        (0.33 * normalized_length + 0.67 * normalized_view_count) AS quality_metric -- Adjust weights here
-                                   FROM Normalized)
-                SELECT account_age_days,
-                       quality_metric
-                FROM WeightedQuality
-                ORDER BY quality_metric DESC
-                LIMIT #{pageSize} OFFSET #{offset}
+            SELECT\s
+                 EXTRACT(DAY FROM CURRENT_TIMESTAMP - TO_TIMESTAMP(u.creation_date)) AS account_age_days,
+                 AVG(a.score) AS quality_metric
+             FROM\s
+                 "user" u
+             JOIN\s
+                 answer a\s
+             ON\s
+                    u.user_id = CAST(a.owner_user_id AS BIGINT)
+             GROUP BY\s
+                 account_age_days
+             having AVG(a.score)<>0
+             ORDER BY\s
+                 account_age_days DESC
+              LIMIT #{pageSize} OFFSET #{offset}
             """)
     List<CustomScoreVO> getCustomScore(@Param("pageSize") Integer pageSize, @Param("offset") Integer offset);
 
